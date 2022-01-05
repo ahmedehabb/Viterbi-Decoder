@@ -90,7 +90,7 @@ always @(posedge clk, reset) begin
                     j = 2**k; 
                 end
                 // no of outgoings from my states
-                for (; j<2**k ; j=j+1) begin
+                while(j<2**k) begin
                         ones = 0;
                         // getting index of my next state in integer to axes table        
                         myNextState = nextStates[states][(2**k -j)*(m-k) - 1 -: (m-k) ];
@@ -129,6 +129,7 @@ always @(posedge clk, reset) begin
 
                         end
                 end
+					 j=j+1;
             end
             // increment level
             i = i+1;
