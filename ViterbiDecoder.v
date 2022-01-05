@@ -68,7 +68,7 @@ integer row;
 integer memoryIndex;
 
 
-always @(posedge clk, reset) begin
+always @(posedge clk, posedge reset) begin
     if (reset == 1'b1) begin
         // looping on whole memory to reset it
         for (memoryIndex=0; memoryIndex < 2**(m-k); memoryIndex=memoryIndex+1) begin
@@ -148,7 +148,7 @@ integer j,i,states;
 integer ones;
 integer exCount ;
 
-always @(posedge clk, reset) begin
+always @(posedge clk,posedge reset, posedge restart) begin
 
 	//Reseting or resarting module
 	if(reset || restart) begin
@@ -175,7 +175,7 @@ always @(posedge clk, reset) begin
                 if (historyTable[states][(L+1 -i)*(m-k) -1] === 1'bz) begin
                     // cant start from here
                     j = 2**k; 
-                end
+                end 
                 // no of outgoings from my states
                 while(j < 2**k) begin
                     ones = 0;
@@ -190,11 +190,18 @@ always @(posedge clk, reset) begin
                     // check collision
                     // getting no of 1s
                     for(exCount=0;exCount<n;exCount=exCount+1)   //check for all the bits.
-                        if(noOfErrors[exCount] == 1'b1)    //check if the bit is '1'
+                        if(noOfErrors[exCount] == 1'b1) begin    //check if the bit is '1'
                             ones = ones + 1;    //if its one, increment the count.
+                            //TODO: ADDED ELSE TO AVOID LATCH
+                        end else begin
+                            ones = ones;
+                        end
                     // saving history no matter error
                     if (i!=0) begin
                         ones = errorTable[states][(E+1)*(L+1 -i) -1 -:(E+1)] + ones;
+                    end else begin
+                        //TODO: we should add a default value here to avoid latch
+                        ones = ones;
                     end
                     if (errorTable[myNextState][(E+1)*(L+1 -i-1) -1] === 1'bz) begin // no prev state came
                         
@@ -207,6 +214,11 @@ always @(posedge clk, reset) begin
                             errorTable[myNextState][(E+1)*(L+1 -i-1) -1 -:(E+1)] = ones; 
                             historyTable[myNextState][(L+1 -i-1)*(m-k)-1 -: (m-k)] = states;
                             backTrackingTable[myNextState][k*(L+1 -i-1) -1 -: k ] = j ; 
+                        end else begin
+                            //TODO:we should add a default value here
+                            errorTable[myNextState][(E+1)*(L+1 -i-1) -1 -:(E+1)] = errorTable[myNextState][(E+1)*(L+1 -i-1) -1 -:(E+1)];
+                            historyTable[myNextState][(L+1 -i-1)*(m-k)-1 -: (m-k)] = historyTable[myNextState][(L+1 -i-1)*(m-k)-1 -: (m-k)];
+                            backTrackingTable[myNextState][k*(L+1 -i-1) -1 -: k ] = backTrackingTable[myNextState][k*(L+1 -i-1) -1 -: k ];
                         end 
                     end
 					j=j+1;
@@ -214,20 +226,26 @@ always @(posedge clk, reset) begin
             end
             // increment level
             i = i+1;
+        end else begin
+            i = i;
         end
-	if (i == L) begin
+	    if (i == L) begin
                 previousState  = 0;
                 error = errorTable[previousState][(E+1)*(1) -1 -:(E+1)];
                 for (i = 0; i < L; i = i+1) begin
-                    nextState = historyTable[previousState][(i+1)*(m-k)-1 -: (m-k)];
+                    //nextState = historyTable[previousState][(i+1)*(m-k)-1 -: (m-k)];
                     decoded[(i+1)*k -1 -: k] = backTrackingTable[previousState][k*(i+1) -1 -: k ];
                     previousState = historyTable[previousState][(i+1)*(m-k)-1 -: (m-k)];
                 end
                 ready = 1;
         end
+        else begin
+            i = i;
+        end
+
         
     end 
-
+    
 
 end
 
